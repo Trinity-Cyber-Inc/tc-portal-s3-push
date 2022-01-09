@@ -1,0 +1,22 @@
+# Editor related files
+.swp
+.*.swp
+
+# Virtual environments
+runtime/
+env/
+venv/
+
+# Python generated files
+__pycache__/
+*.py[cod]
+.pytest_cache
+
+# build/packaging
+*.spec
+BUILDROOT
+RPMS
+/config.json
+
+# Trinity Cyber specific files
+ca_certs.pem
