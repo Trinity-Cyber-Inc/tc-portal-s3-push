@@ -1,0 +1,14 @@
+{
+  "trinity_cyber_portal": {
+    "api_url": "https://portal.trinitycyber.com/graphql",
+    "marker_file_directory": "~/.tc3/",
+    "marker_file": "portal-s3-after-marker.txt",
+    "client_id": null
+  },
+  "s3": {
+    "s3_bucket": "",
+    "s3_region": "",
+    "key_base": "",
+    "retry_delay_ms": 500
+  }
+}

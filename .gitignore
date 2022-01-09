@@ -17,6 +17,7 @@ __pycache__/
 BUILDROOT
 RPMS
 /config.json
+/environment
 
 # Trinity Cyber specific files
 ca_certs.pem

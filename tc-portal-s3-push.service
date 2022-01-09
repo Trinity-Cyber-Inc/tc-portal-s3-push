@@ -1,0 +1,15 @@
+[Unit]
+Description=Pull events from the Trinity Cyber customer portal and push them to an S3 bucket.
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+User=trinitycyber
+Group=trinitycyber
+EnvironmentFile=/opt/trinity/tc-portal-s3-push/environment
+ExecStart=/opt/trinity/tc-portal-s3-push/runtime/bin/python /opt/trinity/tc-portal-s3-push/trinity_events_to_s3.py
+ExecStop=/bin/kill -TERM $MAINPID
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

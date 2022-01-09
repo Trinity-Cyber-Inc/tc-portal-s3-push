@@ -1,0 +1,95 @@
+Summary: Trinity Cyber, Inc. Portal to S3 Push
+Name: tc-portal-s3-push
+Version: __VERSION__
+Release: __RELEASE__
+License: Apache 2.0
+Group: Security/TrinityCyber
+BuildRequires: perl, rh-python36-python-virtualenv
+Requires: rh-python36-python-libs
+Requires(pre): shadow-utils
+Requires(post): systemd
+Requires(preun): systemd
+Requires(postun): systemd
+AutoReq: no
+AutoReqProv: no
+
+# Prevent RPM from trying to compile the Python files
+%define __os_install_post %{nil}
+
+%description
+Trinity Cyber, Inc. Portal to S3 Push
+
+%prep
+
+%install
+%{__mkdir} -p %{buildroot}/opt/trinity/tc-portal-s3-push
+%{__cp} LICENSE logging.json trinity_events_to_s3.py %{buildroot}/opt/trinity/tc-portal-s3-push/
+%{__cp} config.json.sample %{buildroot}/opt/trinity/tc-portal-s3-push/config.json
+%{__cp} environment.sample %{buildroot}/opt/trinity/tc-portal-s3-push/environment
+%{__mkdir} -p %{buildroot}/usr/lib/systemd/system
+%{__cp} tc-portal-s3-push.service %{buildroot}/usr/lib/systemd/system
+
+# Install dependencies into a Python virtualenv and clean up paths
+# See https://www.alexhudson.com/2013/05/24/packagin-a-virtualenv-really-not-relocatable/
+cd %{buildroot}/opt/trinity/tc-portal-s3-push
+/opt/rh/rh-python36/root/bin/virtualenv runtime
+perl -p -i -e 's/\/.*?\/runtime/runtime/' runtime/bin/*
+runtime/bin/python -m pip --cert /etc/pki/tls/cert.pem install -r %{_topdir}/requirements.txt
+perl -p -i -e 's/\/.*?\/runtime/runtime/' runtime/bin/*
+
+
+%clean
+%{__rm} -rf  %{_builddir}/BUILDROOT
+
+%post
+/usr/bin/systemctl daemon-reload
+
+if  [ $1 -eq 1 ]; then
+    # is initial install
+    /usr/bin/systemctl enable tc-portal-s3-push
+    echo "Service for tc-portal-s3-push has been enabled, ensure config file is present and correct."
+fi
+
+%postun
+if [ $1 -eq 0 ]; then
+    # is un-install
+    /usr/bin/systemctl daemon-reload
+
+    /sbin/userdel trinitycyber
+    /sbin/groupdel trinitycyber
+
+    %{__rm} -rf /opt/trinity/tc-portal-s3-push
+fi
+
+#if [ $1 -eq 1 ]; then
+#    # is upgrade
+#fi
+
+%pre
+if [ $1 -eq 1 ]; then
+    # is initial install
+    /usr/bin/getent group trinitycyber || /sbin/groupadd -r trinitycyber
+    /usr/bin/getent passwd trinitycyber || /sbin/useradd -r -d /opt/trinity/tc-portal-s3-push -s /bin/false -g trinitycyber trinitycyber
+fi
+
+#if [ $1 -eq 2 ]; then
+#    # is upgrade
+#fi
+
+%preun
+if [ $1 -eq 0 ]; then
+    # is un-install
+    /usr/bin/systemctl stop tc-portal-s3-push
+fi
+
+#if [ $1 -eq 1 ]; then
+#    # is upgrade
+#fi
+
+%files
+%defattr(-, trinitycyber, trinitycyber, -)
+/opt/trinity/tc-portal-s3-push/
+%config(noreplace) /opt/trinity/tc-portal-s3-push/config.json
+%config(noreplace) /opt/trinity/tc-portal-s3-push/environment
+%attr(644, trinitycyber, trinitycyber) /usr/lib/systemd/system/tc-portal-s3-push.service
+
