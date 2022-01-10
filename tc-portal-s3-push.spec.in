@@ -4,8 +4,8 @@ Version: __VERSION__
 Release: __RELEASE__
 License: Apache 2.0
 Group: Security/TrinityCyber
-BuildRequires: perl, rh-python36-python-virtualenv
-Requires: rh-python36-python-libs
+BuildRequires: perl, python36
+Requires: python36
 Requires(pre): shadow-utils
 Requires(post): systemd
 Requires(preun): systemd
@@ -32,7 +32,7 @@ Trinity Cyber, Inc. Portal to S3 Push
 # Install dependencies into a Python virtualenv and clean up paths
 # See https://www.alexhudson.com/2013/05/24/packagin-a-virtualenv-really-not-relocatable/
 cd %{buildroot}/opt/trinity/tc-portal-s3-push
-/opt/rh/rh-python36/root/bin/virtualenv runtime
+/usr/bin/python3 -m venv runtime
 perl -p -i -e 's/\/.*?\/runtime/runtime/' runtime/bin/*
 runtime/bin/python -m pip --cert /etc/pki/tls/cert.pem install -r %{_topdir}/requirements.txt
 perl -p -i -e 's/\/.*?\/runtime/runtime/' runtime/bin/*
