@@ -4,6 +4,7 @@ Version: __VERSION__
 Release: __RELEASE__
 License: Apache 2.0
 Group: Security/TrinityCyber
+Prefix: /opt
 BuildRequires: perl, python36
 Requires: python36
 Requires(pre): shadow-utils
@@ -12,6 +13,9 @@ Requires(preun): systemd
 Requires(postun): systemd
 AutoReq: no
 AutoReqProv: no
+
+# Prevent RPM from trying to create build_id links for ELF files
+%define _build_id_links none
 
 # Prevent RPM from trying to compile the Python files
 %define __os_install_post %{nil}
