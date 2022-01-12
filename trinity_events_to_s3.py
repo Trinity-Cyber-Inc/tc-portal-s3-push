@@ -3,7 +3,6 @@
 import base64
 import boto3
 import certifi
-import copy
 import datetime
 import dateutil
 from getpass import getpass
@@ -15,6 +14,7 @@ import os
 import requests
 import sys
 import time
+
 
 # For a custom CA; if no custom CA is used, comment out this line.
 certifi.where = lambda: '/etc/pki/tls/cert.pem'
@@ -44,10 +44,13 @@ S3_REGION = config['s3']['s3_region']
 KEY_BASE = config['s3']['key_base']
 FAIL_SLEEP_MS = config['s3']['retry_delay_ms']
 
-if not KEY_BASE:
-  KEY_BASE = '/'
-elif not KEY_BASE[-1] == '/':
-  KEY_BASE = KEY_BASE + '/'
+if not KEY_BASE or len(KEY_BASE) == 0:
+    KEY_BASE = '/'
+elif KEY_BASE != '/':
+    if KEY_BASE[0] == '/':
+        KEY_BASE = KEY_BASE[1:]
+    if not KEY_BASE[-1] == '/':
+        KEY_BASE = KEY_BASE + '/'
 
 graphql_query = """
 query AttUsafOtaEvents($after: String) {
@@ -128,11 +131,11 @@ def get_events():
     if TRINITY_PORTAL_CLIENT_ID:
         https_session.headers['X-Effective-Client-Ids'] = f'{TRINITY_PORTAL_CLIENT_ID}'
     after_marker = None
-    if os.path.isfile(MARKER_PATH):
-        with open(MARKER_PATH, 'r') as marker_file:
-            after_marker = marker_file.read()
     have_more_pages = True
     while have_more_pages:
+        if os.path.isfile(MARKER_PATH):
+            with open(MARKER_PATH, 'r') as marker_file:
+                after_marker = marker_file.read()
         variables = {
             'after': after_marker
         }
@@ -143,12 +146,8 @@ def get_events():
         if result_json['data']['events']['pageInfo']['endCursor'] is not None:
             for edge in result_json['data']['events']['edges']:
                 node = edge['node']
-                formula_matches = node.pop('formulaMatches')
-                for match in formula_matches:
-                    node_copy  = copy.deepcopy(node)
-                    node_copy['formula'] = copy.deepcopy(match['formula'])
-                    node_copy['cursor'] = edge['cursor']
-                    yield node_copy
+                node['cursor'] = edge['cursor']
+                yield node
         have_more_pages = result_json['data']['events']['pageInfo']['hasNextPage']
 
 def upload_event(client, event):
@@ -161,8 +160,8 @@ def upload_event(client, event):
             event_id_b64 = base64.b64encode(event["id"].encode('ISO-8859-1')).decode('ISO-8859-1')
             key = f'{KEY_BASE}{event_time.year:04d}/{event_time.month:02d}/{event_time.day:02d}/{event_id_b64}'
             event_bytes = json.dumps(event).encode('UTF-8')
-            event_md5 = base64.b64encode(hashlib.md5(event_bytes).digest()).decode('ISO-8859-1')
-            client.put_object(Bucket=S3_BUCKET, Key=key, Body=event_bytes, ContentMD5=event_md5, ACL='private')
+            client.put_object(Bucket=S3_BUCKET, Key=key, Body=event_bytes)
+            logger.info(f'Uploaded {event["id"]} to s3://{S3_BUCKET}/{key}')
             success = True
             with open(MARKER_PATH, 'w+') as marker_file:
                 marker_file.write(cursor)
