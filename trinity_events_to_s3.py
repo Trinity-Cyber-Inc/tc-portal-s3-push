@@ -114,7 +114,7 @@ def get_api_key():
     api_key = None
     if 'TC_API_KEY' in os.environ:
         api_key = os.environ['TC_API_KEY'];
-    if not api_key:
+    if not api_key and 'api_key' in config['trinity_cyber_portal']:
         api_key = config['trinity_cyber_portal']['api_key']
     if not api_key:
         api_key = getpass("Please enter your Trinity Cyber customer portal API key: ")
@@ -156,12 +156,15 @@ def upload_event(client, event):
     del event['cursor']
     while (not success):
         try:
+            upstart = datetime.datetime.now()
             event_time = dateutil.parser.parse(event['actionTime'])
             event_id_b64 = base64.b64encode(event["id"].encode('ISO-8859-1')).decode('ISO-8859-1')
             key = f'{KEY_BASE}{event_time.year:04d}/{event_time.month:02d}/{event_time.day:02d}/{event_id_b64}'
             event_bytes = json.dumps(event).encode('UTF-8')
             client.put_object(Bucket=S3_BUCKET, Key=key, Body=event_bytes)
-            logger.info(f'Uploaded {event["id"]} to s3://{S3_BUCKET}/{key}')
+            upend = datetime.datetime.now()
+            updur = (upend - upstart)
+            logger.info(f'Uploaded {event["actionTime"]}::{event["id"]} in {updur} to s3://{S3_BUCKET}/{key}')
             success = True
             with open(MARKER_PATH, 'w+') as marker_file:
                 marker_file.write(cursor)
@@ -182,11 +185,17 @@ if __name__ == "__main__":
         got_events = False
         for event in get_events():
             got_events = True
-            upstart = datetime.datetime.now()
             upload_event(client, event)
-            upend = datetime.datetime.now()
-            updur = (upend - upstart)
-            logger.debug(f'Uploaded {event["id"]} to S3 in {updur}')
         if not got_events:
-            logger.debug(f'Received 0 events, waiting and checking again.')
+            now_time = datetime.datetime.now()
+            fmt_time = now_time.isoformat(timespec='milliseconds')
+            no_results = {'time': fmt_time, 'status': 'no results', 'result': f'Trinity Cyber Portal check-in at {fmt_time} and did not detect any new events, waiting until next scheduled check-in.'}
+            try:
+                key = f'{KEY_BASE}{now_time.year:04d}/{now_time.month:02d}/{now_time.day:02d}/no_data_{now_time.hour:02d}{now_time.minute:02d}{now_time.second:02d}'
+                client.put_object(Bucket=S3_BUCKET, Key=key, Body=json.dumps(no_results))
+            except KeyboardInterrupt:
+                exit(0)
+            except Exception as e:
+                logger.error(f'Failed send "no event" file with error:\n{e}')
+            logger.debug(json.dumps(no_results))
             time.sleep(30)
