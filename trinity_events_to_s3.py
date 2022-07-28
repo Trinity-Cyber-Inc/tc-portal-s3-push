@@ -42,7 +42,13 @@ MARKER_PATH = os.path.expanduser(os.path.join(MARKER_FILE_DIR, MARKER_FILE))
 S3_BUCKET = config['s3']['s3_bucket']
 S3_REGION = config['s3']['s3_region']
 KEY_BASE = config['s3']['key_base']
+KEY_FILE_PREFIX = config['s3']['key_file_prefix']
 FAIL_SLEEP_MS = config['s3']['retry_delay_ms']
+
+if KEY_FILE_PREFIX and KEY_FILE_PREFIX[-1] != '-':
+    KEY_FILE_PREFIX = KEY_FILE_PREFIX + '-'
+else
+    KEY_FILE_PREFIX = ''
 
 if not KEY_BASE or len(KEY_BASE) == 0:
     KEY_BASE = '/'
@@ -159,7 +165,7 @@ def upload_event(client, event):
             upstart = datetime.datetime.now()
             event_time = dateutil.parser.parse(event['actionTime'])
             event_id_b64 = base64.b64encode(event["id"].encode('ISO-8859-1')).decode('ISO-8859-1')
-            key = f'{KEY_BASE}{event_time.year:04d}/{event_time.month:02d}/{event_time.day:02d}/{event_id_b64}'
+            key = key = f'{KEY_BASE}{event_time.year:04d}/{event_time.month:02d}/{event_time.day:02d}/{KEY_FILE_PREFIX}-{event_id_b64}.json'
             event_bytes = json.dumps(event).encode('UTF-8')
             client.put_object(Bucket=S3_BUCKET, Key=key, Body=event_bytes)
             upend = datetime.datetime.now()

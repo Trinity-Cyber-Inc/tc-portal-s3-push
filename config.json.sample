@@ -9,6 +9,7 @@
     "s3_bucket": "",
     "s3_region": "",
     "key_base": "",
+    "key_file_prefix": "",
     "retry_delay_ms": 500
   }
 }
